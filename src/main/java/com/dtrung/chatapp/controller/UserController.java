@@ -60,10 +60,12 @@ public class UserController {
         }
         return ResponseEntity.ok(userService.acceptOrDeclineAddFriendRequest(id, reply));
     }
+
     @GetMapping("")
     public ResponseEntity<List<User>> getUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
+
     @GetMapping("/friends")
     public ResponseEntity<List<OnlineConversation>> getFriends() {
         return ResponseEntity.ok(userService.getOnlineConversations());

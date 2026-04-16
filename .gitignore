@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+application-prod.yml
+.cursor
+
+# Docker local runtime data
+src/docker/data/
+src/docker/config/

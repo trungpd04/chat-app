@@ -71,7 +71,8 @@ public class OnlineOfflineServiceImpl implements OnlineOfflineService {
 
     @Override
     public boolean isUserSubscribed(UUID userId, String subscription) {
-        return userSubscribed.containsKey(userId);
+        Set<String> subscribed = userSubscribed.getOrDefault(userId, Collections.emptySet());
+        return subscribed.contains(subscription);
     }
 
     @Override

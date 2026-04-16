@@ -48,6 +48,7 @@
 
     let stompClient;
     let onlineUsers = new Set();
+    let subscribed = new Map();
     async function login() {
         const username = document.getElementById("username").value;
         const password = document.getElementById("password").value;
@@ -108,10 +109,30 @@
                             // Lưu vào Session Storage
                             sessionStorage.setItem("currentReceiverId", user.otherSideUserId);
                             sessionStorage.setItem("currentConversationId", user.convId);
-                            stompClient.subscribe("/topic/" + user.convId, (message) => {
-                               const receivedMessage = JSON.parse(message.body);
-                               receiveMessage(receivedMessage);
-                            });
+                            let subscription = stompClient.subscribe("/topic/" + user.convId, (message) => {
+                                const receivedMessage = JSON.parse(message.body);
+                                receiveMessage(receivedMessage);
+                            })
+                            stompClient.subscribe("/topic/notification/" + user.convId, (message) => {
+                                const notification = JSON.parse(message.body);
+                                const currentLoggedInUser = sessionStorage.getItem("loggedInUserId");
+                                console.log(notification)
+                                if(notification) {
+                                    if(notification.friendId === currentLoggedInUser && notification.deliveryStatus === "SEEN") {
+                                        updateSentMessages(notification.deliveryStatus)
+                                    }
+                                }
+                            })
+                            if(subscription) {
+                                const notificationToUser = {
+                                    friendId : user.otherSideUserId,
+                                    deliveryStatus : "SEEN",
+                                }
+                                stompClient.publish({
+                                    destination: `/app/chat/notification/${user.convId}`,
+                                    body: JSON.stringify(notificationToUser)
+                                })
+                            }
                             loadMessage(user.convId);
                         });
                     })
@@ -131,15 +152,11 @@
                     const messageData = JSON.parse(message.body);
                     if(messageData.friendStatus === "ONLINE") {
                         onlineUsers.add(messageData.friendId)
+                        updateSentMessages("DELIVERED")
                         document.getElementById(`status-${messageData.friendId}`).classList.add("status-indicator")
                     }else {
                         document.getElementById(`status-${messageData.friendId}`).classList.remove("status-indicator")
                     }
-                });
-                const convId = sessionStorage.getItem("currentConversationId");
-                stompClient.subscribe("/topic/" + convId, (message) => {
-                    const messageData = JSON.parse(message.body);
-                    console.log(messageData)
                 });
             }
             stompClient.onStompError = (frame) => {
@@ -152,27 +169,69 @@
             console.error("Lỗi đăng nhập:", error);
         }
     }
+    // async function loadMessage(conversationId) {
+    //     try {
+    //         const messages = await fetch(`http://localhost:8080/chats?convId=${conversationId}`);
+    //         const messagesResponse = await messages.json();
+    //         const currentChatWithUserId = sessionStorage.getItem("currentReceiverId")
+    //         const chatMessages = document.getElementById("chat-messages");
+    //         chatMessages.innerHTML = ""
+    //         messagesResponse.forEach(message => {
+    //             if(message.fromUser === currentChatWithUserId) {
+    //                 receiveMessage(message)
+    //             }else{
+    //                 const messageElement = document.createElement("div");
+    //                 messageElement.classList.add("message", "sent");
+    //                 messageElement.textContent = message.content;
+    //                 chatMessages.appendChild(messageElement);
+    //                 chatMessages.scrollTop = chatMessages.scrollHeight;
+    //             }
+    //         })
+    //     }catch (error) {
+    //         alert(error)
+    //     }
+    // }
     async function loadMessage(conversationId) {
         try {
             const messages = await fetch(`http://localhost:8080/chats?convId=${conversationId}`);
             const messagesResponse = await messages.json();
-            const currentChatWithUserId = sessionStorage.getItem("currentReceiverId")
+            const currentChatWithUserId = sessionStorage.getItem("currentReceiverId");
             const chatMessages = document.getElementById("chat-messages");
-            chatMessages.innerHTML = ""
-            messagesResponse.forEach(message => {
-                if(message.fromUser === currentChatWithUserId) {
-                    receiveMessage(message)
-                }else{
-                    const messageElement = document.createElement("div");
-                    messageElement.classList.add("message", "sent");
-                    messageElement.textContent = message.content;
-                    chatMessages.appendChild(messageElement);
+            chatMessages.innerHTML = "";
+
+            messagesResponse.forEach((message, index) => {
+                const messageElement = document.createElement("div");
+                messageElement.classList.add("message");
+
+                if (message.fromUser === currentChatWithUserId) {
+                    messageElement.classList.add("received");
+                } else {
+                    messageElement.classList.add("sent");
                 }
-            })
-        }catch (error) {
-            alert(error)
+
+                // Nội dung tin nhắn
+                messageElement.textContent = message.content;
+
+                // Nếu là tin nhắn cuối cùng bạn gửi, thêm nhãn trạng thái
+                if (message.fromUser !== currentChatWithUserId && index === messagesResponse.length - 1) {
+                    const statusSpan = document.createElement("span");
+                    statusSpan.classList.add("delivery-status");
+                    statusSpan.textContent = message.deliveryStatus; // SENT, DELIVERED, SEEN
+                    statusSpan.style.color = "green" // SENT, DELIVERED, SEEN
+                    messageElement.appendChild(statusSpan);
+                }
+
+                chatMessages.appendChild(messageElement);
+            });
+
+            // Tự động cuộn xuống tin nhắn mới nhất
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        } catch (error) {
+            alert(error);
         }
     }
+
     function sendMessage() {
         const messageInput = document.getElementById("messageInput");
         const messageContent = messageInput.value.trim();
@@ -201,6 +260,71 @@
         }
         // Simulate receiving a message after 1 second
     }
+    function updateSentMessages(status) {
+        const chatMessages = document.querySelectorAll('#chat-messages .message');
+        let lastReceivedIndex = -1;
+
+        // 🔍 Xác định vị trí cuối cùng của tin nhắn từ người kia
+        chatMessages.forEach((msg, index) => {
+            if (msg.classList.contains('received')) {
+                lastReceivedIndex = index;
+            }
+        });
+
+        // 🎯 Lấy và cập nhật tất cả tin nhắn mình gửi sau tin nhắn cuối cùng của người kia
+        const messagesAfterReceived = Array.from(chatMessages).slice(lastReceivedIndex + 1)
+            .filter(msg => msg.classList.contains('sent'));
+        console.log(messagesAfterReceived);
+        messagesAfterReceived.forEach(msg => {
+            msg.setAttribute("data-status", status);
+            msg.setAttribute("title", status);
+            console.log(msg)
+            // 🎨 Hiển thị trạng thái SEEN dưới tin nhắn
+            let statusElement = msg.querySelector('.delivery-status');
+            if(statusElement) {
+                statusElement.textContent = status;
+                statusElement.style.color = "green"
+                statusElement.style.alignItems = "right"
+            }
+        });
+        console.log(`✅ ${messagesAfterReceived.length} tin nhắn đã được cập nhật trạng thái SEEN.`);
+    }
+
+    function updateMessageStatus(messageId, newStatus) {
+        const messageElement = document.querySelector(`[message-id="${messageId}"]`);
+        if (messageElement) {
+            messageElement.setAttribute("data-status", newStatus);
+            messageElement.setAttribute("title", newStatus.replace("_", " ")); // Tooltip
+
+            // 🔄 Tìm hoặc tạo thẻ trạng thái
+            let statusElement = messageElement.querySelector(".delivery-status");
+            if (!statusElement) {
+                statusElement = document.createElement("span");
+                statusElement.className = "delivery-status";
+                messageElement.appendChild(statusElement);
+            }
+
+            // 🎨 Cập nhật nội dung trạng thái
+            switch (newStatus) {
+                case "NOT_DELIVERED":
+                    statusElement.textContent = "❌ Not Delivered";
+                    statusElement.style.color = "red";
+                    break;
+                case "DELIVERED":
+                    statusElement.textContent = "✅ Delivered";
+                    statusElement.style.color = "blue";
+                    break;
+                case "SEEN":
+                    statusElement.textContent = "👀 Seen";
+                    statusElement.style.color = "green";
+                    updateSentMessages(newStatus);
+                    break;
+            }
+            console.log(`✅ Tin nhắn ${messageId} đã được cập nhật trạng thái: ${newStatus}`);
+        } else {
+            console.log(`❌ Không tìm thấy tin nhắn với ID: ${messageId}`);
+        }
+    }
 
     function receiveMessage(message) {
         const chatMessages = document.getElementById("chat-messages");
@@ -211,6 +335,15 @@
             messageElement.textContent = message.content;
 
             chatMessages.appendChild(messageElement);
+
+        }else{
+            const chatMessages = document.getElementById("chat-messages");
+            const allMessages = chatMessages.querySelectorAll(".message");
+            if (allMessages.length > 0) {
+                const lastMessage = allMessages[allMessages.length - 1];
+                lastMessage.setAttribute("message-id", message.id);
+                updateMessageStatus(message.id,message.deliveryStatus )
+            }
         }
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }

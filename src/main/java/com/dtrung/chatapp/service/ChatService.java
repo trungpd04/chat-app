@@ -1,6 +1,7 @@
 package com.dtrung.chatapp.service;
 
 import com.dtrung.chatapp.model.Message;
+import com.dtrung.chatapp.model.NotificationToUser;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 
 import java.util.List;
@@ -11,4 +12,10 @@ public interface ChatService {
                         SimpMessageHeaderAccessor headerAccessor
     );
     List<Message> getMessages(String conversationId);
+    NotificationToUser sendNotificationToUser(
+            String userId,
+            String conversationId,
+            NotificationToUser notificationToUser,
+            SimpMessageHeaderAccessor headerAccessor
+    );
 }

@@ -1,0 +1,9 @@
+sau khi login:
+ => online
+ => khi subscribe vào phòng thì
+    case 1: receiver offline => tin nhắn phải là NOT_DELIVERED
+        sc: receiver online trở lại thì thông báo cho sender rằng tin nhắn này đã được DELIVERED => update lại tin nhắn
+    case 2: receiver online => tin nhắn phải là DELIVERED
+ => khi sender gửi tin nhắn:
+    receiver đang ở phòng chat thì phải check đã subscribe, sau khi vào phòng chat thì phải gửi tin thông báo cho người
+        gửi rằng tin nhắn đã được seen => phải có một service để đảm nhận việc này

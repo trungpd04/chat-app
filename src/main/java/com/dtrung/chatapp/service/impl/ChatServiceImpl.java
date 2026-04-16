@@ -1,9 +1,6 @@
 package com.dtrung.chatapp.service.impl;
 
-import com.dtrung.chatapp.model.Conversation;
-import com.dtrung.chatapp.model.Message;
-import com.dtrung.chatapp.model.MessageDeliveryStatus;
-import com.dtrung.chatapp.model.User;
+import com.dtrung.chatapp.model.*;
 import com.dtrung.chatapp.repository.ConversationRepository;
 import com.dtrung.chatapp.repository.MessageRepository;
 import com.dtrung.chatapp.repository.UserRepository;
@@ -38,33 +35,65 @@ public class ChatServiceImpl implements ChatService {
         Conversation conversation = conversationRepository
                 .findByConvId(conversationId);
         UUID receiverId = message.getToUser();
-//        UUID senderId = message.getFromUser();
         User sender = userRepository.findByUsername(Objects.requireNonNull(headerAccessor.getUser()).getName());
         message.setFromUser(sender.getId());
         message.setSendTime(LocalDateTime.now());
+
         boolean isUserOnline = onlineOfflineService.isOnlineUser(receiverId);
         boolean isUserSubscribed = onlineOfflineService.isUserSubscribed(
                 receiverId,
                 "/topic/" + conversationId
         );
+
         if (!isUserOnline) {
+            // Người nhận không online
             message.setDeliveryStatus(MessageDeliveryStatus.NOT_DELIVERED);
-        } else if(!isUserSubscribed) {
+        } else if (!isUserSubscribed) {
+            // Người nhận online nhưng không subscribe vào kênh chat
             message.setDeliveryStatus(MessageDeliveryStatus.DELIVERED);
-            messagingTemplate.convertAndSend("/topic/" + receiverId.toString(), message);
-        }else{
+        } else {
+            // Người nhận online và đang subscribe vào kênh chat
             message.setDeliveryStatus(MessageDeliveryStatus.SEEN);
-            messagingTemplate.convertAndSend("/topic/" + conversationId, message);
         }
+
+        // Lưu tin nhắn vào database
         message.setConversation(conversation);
         conversation.getMessages().add(message);
         messageRepository.save(message);
         conversationRepository.save(conversation);
+
+        // Gửi tin nhắn đến kênh chat
+        messagingTemplate.convertAndSend("/topic/" + conversationId, message);
+
         return message;
     }
 
     @Override
     public List<Message> getMessages(String conversationId) {
         return messageRepository.findByConversationId(conversationId);
+    }
+
+    @Override
+    public NotificationToUser sendNotificationToUser(
+            String userId,
+            String subscription,
+            NotificationToUser notificationToUser,
+            SimpMessageHeaderAccessor headerAccessor
+    ) {
+        boolean isUserSubscribed =
+                onlineOfflineService.isUserSubscribed(UUID.fromString(userId), "/topic/" + subscription);
+        List<Message> messages = messageRepository.findBySenderIdAndReceiverId(
+                subscription,
+                UUID.fromString(userId),
+                notificationToUser.getFriendId()
+        );
+        if(isUserSubscribed){
+            for(Message message : messages){
+                message.setDeliveryStatus(notificationToUser.getDeliveryStatus());
+            }
+            messageRepository.saveAll(messages);
+            messagingTemplate.convertAndSend("/topic/notification/" + subscription, notificationToUser);
+        }
+        return notificationToUser;
     }
 }

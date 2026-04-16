@@ -1,6 +1,7 @@
 package com.dtrung.chatapp.controller;
 
 import com.dtrung.chatapp.model.Message;
+import com.dtrung.chatapp.model.NotificationToUser;
 import com.dtrung.chatapp.repository.MessageRepository;
 import com.dtrung.chatapp.service.ChatService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,20 @@ public class ChatController {
             SimpMessageHeaderAccessor headerAccessor
     ) {
         return ResponseEntity.ok(chatService.sendMessage(convId, message, headerAccessor));
+    }
+    @MessageMapping("/chat/notification/{convId}")
+    public ResponseEntity<NotificationToUser> sendNotification(
+            @Payload NotificationToUser notification,
+            @DestinationVariable String convId,
+            SimpMessageHeaderAccessor headerAccessor
+    ) {
+        return ResponseEntity.ok(
+                chatService.sendNotificationToUser(
+                        notification.getFriendId().toString(),
+                        convId,
+                        notification,
+                        headerAccessor
+                ));
     }
 
     @GetMapping("")

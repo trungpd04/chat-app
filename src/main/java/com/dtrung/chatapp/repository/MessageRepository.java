@@ -13,4 +13,13 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     @Query("SELECT m from Message m where m.conversation.convId = :conversationId " +
             "order by m.sendTime asc ")
     List<Message> findByConversationId(@Param("conversationId") String conversationId);
+
+    @Query("SELECT m from Message m where m.conversation.convId = :conversationId " +
+            "and (m.fromUser = :fromUser or m.toUser = :toUser) " +
+            "order by m.sendTime asc ")
+    List<Message> findBySenderIdAndReceiverId(
+            @Param("conversationId") String conversationId,
+            @Param("fromUser") UUID fromUser,
+            @Param("toUser") UUID toUser
+    );
 }

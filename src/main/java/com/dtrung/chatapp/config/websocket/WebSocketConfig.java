@@ -45,10 +45,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setTaskScheduler(heartBeatScheduler())
                 .setHeartbeatValue(new long[] {10000L, 10000L});
     }
+
     @Bean
     public TaskScheduler heartBeatScheduler() {
         return new ThreadPoolTaskScheduler();
     }
+    
     @Override
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
         RequestUpgradeStrategy upgradeStrategy =

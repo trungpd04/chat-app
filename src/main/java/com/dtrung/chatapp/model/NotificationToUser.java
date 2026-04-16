@@ -13,6 +13,7 @@ import java.util.UUID;
 public class NotificationToUser {
     UUID friendId;
     String message;
+    MessageDeliveryStatus deliveryStatus;
     FriendStatus friendStatus;
     String friendUsername;
     boolean unread;

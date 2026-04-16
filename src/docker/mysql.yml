@@ -2,7 +2,7 @@
 name: chat-app
 services:
   mysql:
-    image: mysql:9.0.1-oracle
+    image: mysql:8.0
     environment:
       - MYSQL_USER=docker_database
       - MYSQL_ROOT_PASSWORD=0011246

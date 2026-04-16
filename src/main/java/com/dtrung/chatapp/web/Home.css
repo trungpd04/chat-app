@@ -124,3 +124,27 @@ body {
     text-align: left;
     border-bottom-left-radius: 0;
 }
+.delivery-status {
+    font-size: 12px;
+    margin-top: 4px;
+    text-align: right;
+    color: gray;
+    /*opacity: 0;*/
+    transition: opacity 0.5s ease-in-out;
+    display: flex;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+.delivery-status.seen {
+    color: green;
+    opacity: 1;
+}
+
+.delivery-status img {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+

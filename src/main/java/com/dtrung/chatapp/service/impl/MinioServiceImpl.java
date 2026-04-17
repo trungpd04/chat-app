@@ -81,13 +81,5 @@ public class MinioServiceImpl implements MinioService {
             throw new BusinessException(e.getMessage());
         }
        return String.format("http://<minio-host>:<minio-port>/%s/%s", BUCKET, fileName);
-
-//        minioClient.getPresignedObjectUrl(
-//                        io.minio.GetPresignedObjectUrlArgs.builder()
-//                                .method(io.minio.http.Method.GET)
-//                                .bucket(BUCKET)
-//                                .object(fileName)
-//                                .build()
-//                );
     }
 }

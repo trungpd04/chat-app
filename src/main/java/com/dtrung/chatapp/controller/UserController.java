@@ -6,6 +6,7 @@ import com.dtrung.chatapp.model.FriendshipStatus;
 import com.dtrung.chatapp.model.User;
 import com.dtrung.chatapp.request.LoginRequest;
 import com.dtrung.chatapp.request.SignUpRequest;
+import com.dtrung.chatapp.response.FriendRequestResponse;
 import com.dtrung.chatapp.response.LoginResponse;
 import com.dtrung.chatapp.response.OnlineConversation;
 import com.dtrung.chatapp.service.UserService;
@@ -33,6 +34,7 @@ public class UserController {
         User user = userService.register(signUpRequest);
         return ResponseEntity.ok(user);
     }
+
     @PostMapping(value = "/login")
     public ResponseEntity<LoginResponse> login(
 
@@ -42,32 +44,44 @@ public class UserController {
     }
 
     @PostMapping("/sendAddFriendRequest")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     public ResponseEntity<FriendShip> sendAddFriendRequest(
             @RequestParam(name = "userId") String userId
     ) throws BusinessException {
         return ResponseEntity.ok(userService.sendAddFriendRequest(UUID.fromString(userId)));
     }
+
     @PostMapping("/replyFriendRequest")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     public ResponseEntity<?> replyFriendRequest(
             @RequestParam("id") UUID id,
-            @RequestParam("reply") FriendshipStatus reply
+            @RequestParam("reply") String reply
             ) throws BusinessException {
-        FriendShip friendShip = userService.acceptOrDeclineAddFriendRequest(id, reply);
+        FriendShip friendShip = userService.acceptOrDeclineAddFriendRequest(
+                id,
+                FriendshipStatus.fromRequestValue(reply)
+        );
         if (friendShip == null) {
             return ResponseEntity.ok("Remove request");
         }
-        return ResponseEntity.ok(userService.acceptOrDeclineAddFriendRequest(id, reply));
+        return ResponseEntity.ok(friendShip);
     }
 
     @GetMapping("")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     public ResponseEntity<List<User>> getUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
     @GetMapping("/friends")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     public ResponseEntity<List<OnlineConversation>> getFriends() {
         return ResponseEntity.ok(userService.getOnlineConversations());
+    }
+
+    @GetMapping("/friendRequests")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
+    public ResponseEntity<List<FriendRequestResponse>> getFriendRequests() {
+        return ResponseEntity.ok(userService.getPendingFriendRequests());
     }
 }

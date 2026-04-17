@@ -87,9 +87,12 @@ public class OnlineOfflineServiceImpl implements OnlineOfflineService {
     @Override
     public void removeUserSubscribed(Principal user, String subscribedChannel) {
         User user1 = userRepository.findByUsername(user.getName());
-        log.info("unsubscription! {} unsubscribed {}", user1.getUsername(), subscribedChannel);
+        Set<String> subscribed = userSubscribed.get(user1.getId());
+        log.info("after remove channel: {} \n user: {} \n present user subscribed {}", subscribedChannel, user1.getUsername(), subscribed.toString());
         Set<String> subscriptions = userSubscribed.getOrDefault(user1.getId(), new HashSet<>());
+        log.info("unsubscription! {} unsubscribed {}", user1.getUsername(), subscribedChannel);
         subscriptions.remove(subscribedChannel);
+
         userSubscribed.put(user1.getId(), subscriptions);
     }
 

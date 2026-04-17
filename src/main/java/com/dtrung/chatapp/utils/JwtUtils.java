@@ -35,7 +35,7 @@ public class JwtUtils {
                         .subject(getSubject(user))
                         .issuedAt(Instant.now())
                         .issuer("dtrung")
-                        .claim("authorities", user.getAuthorities())
+                        .claim("authorities", user.getAuthorities().stream().map(Object::toString).toList())
                         .build();
         return this.jwtEncoder.encode(JwtEncoderParameters.from(jwtClaimsSet)).getTokenValue();
     }

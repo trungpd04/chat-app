@@ -6,6 +6,7 @@ import com.dtrung.chatapp.model.FriendshipStatus;
 import com.dtrung.chatapp.model.User;
 import com.dtrung.chatapp.request.LoginRequest;
 import com.dtrung.chatapp.request.SignUpRequest;
+import com.dtrung.chatapp.response.FriendRequestResponse;
 import com.dtrung.chatapp.response.LoginResponse;
 import com.dtrung.chatapp.response.OnlineConversation;
 
@@ -23,5 +24,6 @@ public interface UserService {
             throws BusinessException;
     FriendShip unfriend(UUID friendId);
     List<FriendShip> getFriends(UUID userId);
+    List<FriendRequestResponse> getPendingFriendRequests();
     List<OnlineConversation> getOnlineConversations();
 }

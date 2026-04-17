@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.lang.NonNullApi;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.scheduling.TaskScheduler;
@@ -19,7 +18,6 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 import org.springframework.web.socket.server.RequestUpgradeStrategy;
 import org.springframework.web.socket.server.standard.TomcatRequestUpgradeStrategy;
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
-import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -57,6 +55,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 new TomcatRequestUpgradeStrategy();
         registry.addEndpoint("/ws")
                 .setHandshakeHandler(new DefaultHandshakeHandler(upgradeStrategy))
-                .setAllowedOrigins("*");
+                .setAllowedOrigins(frontendCallerHost, "http://localhost:5173", "*");
     }
 }

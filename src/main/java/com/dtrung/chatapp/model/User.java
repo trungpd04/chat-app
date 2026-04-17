@@ -34,15 +34,10 @@ public class User implements UserDetails {
     private String avatar;
     private boolean status;
 
-
     @OneToMany(mappedBy = "user")
     private List<GroupMember> groupMembers = new ArrayList<>();
 
     @ManyToMany(fetch = FetchType.EAGER)
-//    @JoinTable(
-//            joinColumns = @JoinColumn(name = "user_id"),
-//            inverseJoinColumns = @JoinColumn(name = "role_id")
-//    )
     private Set<Role> roles = new HashSet<>();
 
     @Override

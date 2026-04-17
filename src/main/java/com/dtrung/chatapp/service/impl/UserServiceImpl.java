@@ -8,6 +8,7 @@ import com.dtrung.chatapp.repository.RoleRepository;
 import com.dtrung.chatapp.repository.UserRepository;
 import com.dtrung.chatapp.request.LoginRequest;
 import com.dtrung.chatapp.request.SignUpRequest;
+import com.dtrung.chatapp.response.FriendRequestResponse;
 import com.dtrung.chatapp.response.LoginResponse;
 import com.dtrung.chatapp.response.OnlineConversation;
 import com.dtrung.chatapp.service.MinioService;
@@ -18,6 +19,7 @@ import com.dtrung.chatapp.utils.SecurityUtils;
 import com.dtrung.chatapp.utils.UUIDUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -26,10 +28,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -174,6 +174,25 @@ public class UserServiceImpl implements UserService {
     public List<FriendShip> getFriends(UUID userId) {
 
         return friendShipRepository.findByUserId(userId);
+    }
+
+    @Override
+    public List<FriendRequestResponse> getPendingFriendRequests() {
+        User currentLoggedInUser = securityUtils.getCurrentUser();
+        return friendShipRepository.findPendingRequestsByReceiverId(currentLoggedInUser.getId())
+                .stream()
+                .map(friendShip -> userRepository.findById(friendShip.getSenderId())
+                        .map(sender -> FriendRequestResponse.builder()
+                                .id(friendShip.getId())
+                                .senderId(sender.getId())
+                                .senderUsername(sender.getUsername())
+                                .senderAvatar(sender.getAvatar())
+                                .status(friendShip.getStatus())
+                                .createdAt(friendShip.getCreatedAt())
+                                .build())
+                        .orElse(null))
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     @Override

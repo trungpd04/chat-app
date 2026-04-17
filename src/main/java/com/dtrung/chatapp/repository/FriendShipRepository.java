@@ -14,6 +14,10 @@ public interface FriendShipRepository extends JpaRepository<FriendShip, UUID> {
             "or f.receiverId = :userId) and f.status = 'ACCEPTED'")
     List<FriendShip> findByUserId(@Param("userId") UUID userId);
 
+    @Query("SELECT f from FriendShip f where f.receiverId = :receiverId and f.status = 'PENDING' " +
+            "order by f.createdAt desc")
+    List<FriendShip> findPendingRequestsByReceiverId(@Param("receiverId") UUID receiverId);
+
     boolean existsBySenderIdAndReceiverId(UUID senderId, UUID receiverId);
 
     @Query("SELECT f from FriendShip f where f.id = :id and f.receiverId = :receiverId ")

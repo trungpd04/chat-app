@@ -49,6 +49,7 @@
     let stompClient;
     let onlineUsers = new Set();
     let subscribed = new Map();
+    let token;
     async function login() {
         const username = document.getElementById("username").value;
         const password = document.getElementById("password").value;
@@ -68,6 +69,7 @@
             });
 
             const responseData = await response.json();
+            token = responseData.token
             document.getElementById("loggedInUserName").innerText = `Logged User: ${responseData.username}`;
             try {
                 const onlineUserResponse = await fetch("http://localhost:8080/users/friends", {
@@ -169,31 +171,12 @@
             console.error("Lỗi đăng nhập:", error);
         }
     }
-    // async function loadMessage(conversationId) {
-    //     try {
-    //         const messages = await fetch(`http://localhost:8080/chats?convId=${conversationId}`);
-    //         const messagesResponse = await messages.json();
-    //         const currentChatWithUserId = sessionStorage.getItem("currentReceiverId")
-    //         const chatMessages = document.getElementById("chat-messages");
-    //         chatMessages.innerHTML = ""
-    //         messagesResponse.forEach(message => {
-    //             if(message.fromUser === currentChatWithUserId) {
-    //                 receiveMessage(message)
-    //             }else{
-    //                 const messageElement = document.createElement("div");
-    //                 messageElement.classList.add("message", "sent");
-    //                 messageElement.textContent = message.content;
-    //                 chatMessages.appendChild(messageElement);
-    //                 chatMessages.scrollTop = chatMessages.scrollHeight;
-    //             }
-    //         })
-    //     }catch (error) {
-    //         alert(error)
-    //     }
-    // }
     async function loadMessage(conversationId) {
         try {
-            const messages = await fetch(`http://localhost:8080/chats?convId=${conversationId}`);
+            const messages = await fetch(`http://localhost:8080/chats?convId=${conversationId}`, { method: "GET",
+                headers: {
+                "Authorization": `Bearer ${token}`
+            }});
             const messagesResponse = await messages.json();
             const currentChatWithUserId = sessionStorage.getItem("currentReceiverId");
             const chatMessages = document.getElementById("chat-messages");

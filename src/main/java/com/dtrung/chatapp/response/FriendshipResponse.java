@@ -1,5 +1,6 @@
 package com.dtrung.chatapp.response;
 
+import com.dtrung.chatapp.model.FriendshipStatus;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,17 +9,19 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Builder
 @Getter
 @Setter
-@AllArgsConstructor
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserSearchResponse {
-    UUID userId;
-    String username;
-    String avatar;
-    RelationshipStatus relationshipStatus;
+public class FriendshipResponse {
+    UUID id;
+    UUID senderId;
+    UUID receiverId;
+    FriendshipStatus status;
+    LocalDateTime createdAt;
 }

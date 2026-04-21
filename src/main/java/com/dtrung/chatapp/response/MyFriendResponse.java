@@ -10,15 +10,16 @@ import lombok.experimental.FieldDefaults;
 
 import java.util.UUID;
 
-@Builder
 @Getter
 @Setter
-@AllArgsConstructor
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserSearchResponse {
+public class MyFriendResponse {
     UUID userId;
     String username;
     String avatar;
-    RelationshipStatus relationshipStatus;
+    boolean isOnline;
+    String convId;
 }

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface FriendShipRepository extends JpaRepository<FriendShip, UUID> {
@@ -23,4 +24,15 @@ public interface FriendShipRepository extends JpaRepository<FriendShip, UUID> {
 
     @Query("SELECT f from FriendShip f where f.id = :id and f.receiver.id = :receiverId ")
     FriendShip findByIdAndReceiverId(UUID id, UUID receiverId);
+
+    @Query("""
+            SELECT f
+            FROM FriendShip f
+            WHERE (f.sender.id = :firstUserId AND f.receiver.id = :secondUserId)
+               OR (f.sender.id = :secondUserId AND f.receiver.id = :firstUserId)
+            """)
+    Optional<FriendShip> findBetweenUsers(
+            @Param("firstUserId") UUID firstUserId,
+            @Param("secondUserId") UUID secondUserId
+    );
 }

@@ -9,8 +9,11 @@ import com.dtrung.chatapp.repository.UserRepository;
 import com.dtrung.chatapp.request.LoginRequest;
 import com.dtrung.chatapp.request.SignUpRequest;
 import com.dtrung.chatapp.response.FriendRequestResponse;
+import com.dtrung.chatapp.response.FriendshipResponse;
 import com.dtrung.chatapp.response.LoginResponse;
-import com.dtrung.chatapp.response.OnlineConversation;
+import com.dtrung.chatapp.response.MyFriendResponse;
+import com.dtrung.chatapp.response.RelationshipStatus;
+import com.dtrung.chatapp.response.UserSearchResponse;
 import com.dtrung.chatapp.service.MinioService;
 import com.dtrung.chatapp.service.OnlineOfflineService;
 import com.dtrung.chatapp.service.UserService;
@@ -19,7 +22,6 @@ import com.dtrung.chatapp.utils.SecurityUtils;
 import com.dtrung.chatapp.utils.UUIDUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -107,11 +109,30 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public FriendShip sendAddFriendRequest(UUID friendId) throws BusinessException {
+    public FriendshipResponse sendAddFriendRequest(UUID friendId) throws BusinessException {
         User currentLoggedInUser = securityUtils.getCurrentUser();
+        if (currentLoggedInUser.getId().equals(friendId)) {
+            throw new BusinessException("You cannot send a friend request to yourself");
+        }
 
         User sendToUser = userRepository.findById(friendId)
                 .orElseThrow(() -> new BusinessException("User not found"));
+
+        Optional<FriendShip> existingFriendship =
+                friendShipRepository.findBetweenUsers(currentLoggedInUser.getId(), sendToUser.getId());
+        if (existingFriendship.isPresent()) {
+            FriendShip friendship = existingFriendship.get();
+            if (friendship.getStatus() == FriendshipStatus.ACCEPTED) {
+                throw new BusinessException("Users are already friends");
+            }
+            if (friendship.getStatus() == FriendshipStatus.PENDING) {
+                if (friendship.getSender().getId().equals(currentLoggedInUser.getId())) {
+                    throw new BusinessException("Friend request already sent");
+                }
+                throw new BusinessException("This user has already sent you a friend request");
+            }
+            throw new BusinessException("Friend request cannot be created");
+        }
 
         FriendShip friendship = FriendShip.builder()
                 .sender(currentLoggedInUser)
@@ -119,25 +140,30 @@ public class UserServiceImpl implements UserService {
                 .createdAt(LocalDateTime.now())
                 .status(FriendshipStatus.PENDING)
                 .build();
-        if (friendShipRepository.existsBySenderAndReceiver(currentLoggedInUser, sendToUser)
-            || friendShipRepository.existsBySenderAndReceiver(sendToUser, currentLoggedInUser)
-        ) {
-            throw new BusinessException("Request has already been sent or received");
-        } else {
-            return friendShipRepository.save(friendship);
-        }
+        return mapToFriendshipResponse(friendShipRepository.save(friendship));
     }
 
     @Override
-    public List<User> getAllUsers(String search) {
-        return userRepository.findAllByUsernameLike(search);
+    public List<UserSearchResponse> searchUsers(String search) {
+        User currentLoggedInUser = securityUtils.getCurrentUser();
+        return userRepository.searchUsers(currentLoggedInUser.getId(), search)
+                .stream()
+                .map(user -> UserSearchResponse.builder()
+                        .userId(user.getId())
+                        .username(user.getUsername())
+                        .avatar(user.getAvatar())
+                        .relationshipStatus(getRelationshipStatus(currentLoggedInUser.getId(), user.getId()))
+                        .build())
+                .toList();
     }
 
     @Override
     @Transactional
-    public FriendShip acceptOrDeclineAddFriendRequest(UUID id, FriendshipStatus status)
+    public FriendshipResponse acceptOrDeclineAddFriendRequest(UUID id, FriendshipStatus status)
             throws BusinessException {
-
+        if (status != FriendshipStatus.ACCEPTED && status != FriendshipStatus.DECLINE) {
+            throw new BusinessException("Only ACCEPT or DECLINE replies are supported");
+        }
         User currentLoggedInUser = securityUtils.getCurrentUser();
         FriendShip friendship = friendShipRepository
                 .findByIdAndReceiverId(id, currentLoggedInUser.getId());
@@ -157,9 +183,9 @@ public class UserServiceImpl implements UserService {
                 if(status.equals(FriendshipStatus.DECLINE)) {
                     friendship.setStatus(FriendshipStatus.DECLINE);
                     friendShipRepository.delete(friendship);
-                    return null;
+                    return mapToFriendshipResponse(friendship);
                 }
-                return friendShipRepository.save(friendship);
+                return mapToFriendshipResponse(friendShipRepository.save(friendship));
             }else{
                 throw new BusinessException("Add friend request has already declined or accepted");
             }
@@ -186,31 +212,60 @@ public class UserServiceImpl implements UserService {
         User currentLoggedInUser = securityUtils.getCurrentUser();
         return friendShipRepository.findPendingRequestsByReceiverId(currentLoggedInUser.getId())
                 .stream()
-                .map(friendShip -> userRepository.findById(friendShip.getSender().getId())
-                        .map(sender -> FriendRequestResponse.builder()
-                                .id(friendShip.getId())
-                                .senderId(sender.getId())
-                                .senderUsername(sender.getUsername())
-                                .senderAvatar(sender.getAvatar())
-                                .status(friendShip.getStatus())
-                                .createdAt(friendShip.getCreatedAt())
-                                .build())
-                        .orElse(null))
-                .filter(Objects::nonNull)
+                .map(friendShip -> FriendRequestResponse.builder()
+                        .id(friendShip.getId())
+                        .senderId(friendShip.getSender().getId())
+                        .senderUsername(friendShip.getSender().getUsername())
+                        .senderAvatar(friendShip.getSender().getAvatar())
+                        .status(friendShip.getStatus())
+                        .createdAt(friendShip.getCreatedAt())
+                        .build())
                 .toList();
     }
 
     @Override
-    public List<OnlineConversation> getOnlineConversations() {
+    public List<MyFriendResponse> getMyFriends() {
         User currentLoggedInUser = securityUtils.getCurrentUser();
-        List<User> users = userRepository.findAll();
-        return users.stream().filter(user -> !user.getUsername().equalsIgnoreCase(currentLoggedInUser.getUsername()))
-                .map(user -> OnlineConversation.builder()
-                        .otherSideUserName(user.getUsername())
-                        .otherSideUserId(user.getId())
-                        .otherSideUserAvatar(user.getAvatar())
-                        .convId(uuidUtils.getConversationId(currentLoggedInUser.getId(), user.getId()))
-                        .isOnline(onlineOfflineService.isOnlineUser(user.getId()))
-                        .build()).toList();
+        return friendShipRepository.findAllByUserId(currentLoggedInUser.getId())
+                .stream()
+                .map(friendShip -> {
+                    User friend = friendShip.getSender().getId().equals(currentLoggedInUser.getId())
+                            ? friendShip.getReceiver()
+                            : friendShip.getSender();
+                    return MyFriendResponse.builder()
+                            .userId(friend.getId())
+                            .username(friend.getUsername())
+                            .avatar(friend.getAvatar())
+                            .isOnline(onlineOfflineService.isOnlineUser(friend.getId()))
+                            .convId(uuidUtils.getConversationId(currentLoggedInUser.getId(), friend.getId()))
+                            .build();
+                })
+                .toList();
+    }
+
+    private RelationshipStatus getRelationshipStatus(UUID currentUserId, UUID otherUserId) {
+        return friendShipRepository.findBetweenUsers(currentUserId, otherUserId)
+                .map(friendShip -> {
+                    if (friendShip.getStatus() == FriendshipStatus.ACCEPTED) {
+                        return RelationshipStatus.FRIEND;
+                    }
+                    if (friendShip.getStatus() == FriendshipStatus.PENDING) {
+                        return friendShip.getSender().getId().equals(currentUserId)
+                                ? RelationshipStatus.PENDING_SENT
+                                : RelationshipStatus.PENDING_RECEIVED;
+                    }
+                    return RelationshipStatus.NONE;
+                })
+                .orElse(RelationshipStatus.NONE);
+    }
+
+    private FriendshipResponse mapToFriendshipResponse(FriendShip friendShip) {
+        return FriendshipResponse.builder()
+                .id(friendShip.getId())
+                .senderId(friendShip.getSender().getId())
+                .receiverId(friendShip.getReceiver().getId())
+                .status(friendShip.getStatus())
+                .createdAt(friendShip.getCreatedAt())
+                .build();
     }
 }

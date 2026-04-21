@@ -16,9 +16,8 @@ import org.springframework.stereotype.Service;
 import java.sql.Date;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -52,15 +51,12 @@ public class ChatServiceImpl implements ChatService {
         if (!isUserOnline) {
             // Người nhận không online
             message.setDeliveryStatus(MessageDeliveryStatus.NOT_DELIVERED);
-            log.info("user {} not online", receiverId);
         } else if (!isUserSubscribed) {
             // Người nhận online nhưng không subscribe vào kênh chat
             message.setDeliveryStatus(MessageDeliveryStatus.DELIVERED);
-            log.info("user {} not subscribed", receiverId);
         } else {
             // Người nhận online và đang subscribe vào kênh chat
             message.setDeliveryStatus(MessageDeliveryStatus.SEEN);
-            log.info("user {} online and subscribed", receiverId);
         }
 
         // Lưu tin nhắn vào database
@@ -103,27 +99,24 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
-    @Override
-    public NotificationToUser sendNotificationToUser(
-            String userId,
-            String subscription,
-            NotificationToUser notificationToUser,
-            SimpMessageHeaderAccessor headerAccessor
-    ) {
-        boolean isUserSubscribed =
-                onlineOfflineService.isUserSubscribed(UUID.fromString(userId), "/topic/" + subscription);
-        List<Message> messages = messageRepository.findBySenderIdAndReceiverId(
-                subscription,
-                UUID.fromString(userId),
-                notificationToUser.getFriendId()
-        );
-        if(isUserSubscribed){
-            for(Message message : messages){
-                message.setDeliveryStatus(notificationToUser.getDeliveryStatus());
-            }
-            messageRepository.saveAll(messages);
-            messagingTemplate.convertAndSend("/topic/" + subscription, notificationToUser);
+    public Map<UUID, Boolean> getFriendsUnreadStatus(UUID currentUserId, List<UUID> friends) {
+        if (friends == null || friends.isEmpty()) {
+            return Collections.emptyMap();
         }
-        return notificationToUser;
+
+        // 1. Lấy danh sách ID các người bạn CÓ tin nhắn chưa đọc
+        // Giả sử trạng thái chưa đọc của bạn là MessageDeliveryStatus.DELIVERED
+        List<UUID> unreadFriendIds = messageRepository.findFriendsWithUnreadMessages(
+                currentUserId,
+                friends
+        );
+
+        // 2. Map lại danh sách ban đầu để ra kết quả true/false
+        return friends.stream()
+                .collect(Collectors.toMap(
+                        friendId -> friendId,
+                        unreadFriendIds::contains // Trả về true nếu có trong list, ngược lại false
+                ));
     }
+
 }

@@ -12,11 +12,5 @@ public interface ChatService {
                         SimpMessageHeaderAccessor headerAccessor
     );
     List<Message> getMessages(String conversationId);
-    NotificationToUser sendNotificationToUser(
-            String userId,
-            String conversationId,
-            NotificationToUser notificationToUser,
-            SimpMessageHeaderAccessor headerAccessor
-    );
     void sendMessageSeenStatusToSenderUser(String senderUserId, String conversationId);
 }

@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
 import java.util.UUID;
 
 @Builder
@@ -17,4 +18,5 @@ public class NotificationToUser {
     FriendStatus friendStatus;
     String friendUsername;
     boolean unread;
+    List<UUID> unreadFriends;
 }

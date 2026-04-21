@@ -1,16 +1,8 @@
 package com.dtrung.chatapp.service.impl;
 
 import com.dtrung.chatapp.exception.BusinessException;
-import com.dtrung.chatapp.model.Conversation;
-import com.dtrung.chatapp.model.ERole;
-import com.dtrung.chatapp.model.FriendShip;
-import com.dtrung.chatapp.model.FriendshipStatus;
-import com.dtrung.chatapp.model.Role;
-import com.dtrung.chatapp.model.User;
-import com.dtrung.chatapp.repository.ConversationRepository;
-import com.dtrung.chatapp.repository.FriendShipRepository;
-import com.dtrung.chatapp.repository.RoleRepository;
-import com.dtrung.chatapp.repository.UserRepository;
+import com.dtrung.chatapp.model.*;
+import com.dtrung.chatapp.repository.*;
 import com.dtrung.chatapp.response.FriendshipResponse;
 import com.dtrung.chatapp.response.MyFriendResponse;
 import com.dtrung.chatapp.response.RelationshipStatus;
@@ -31,10 +23,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,6 +37,10 @@ class UserServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private MessageRepository messageRepository;
+
     @Mock
     private RoleRepository roleRepository;
     @Mock
@@ -71,6 +64,9 @@ class UserServiceImplTest {
 
     @InjectMocks
     private UserServiceImpl userService;
+
+    @InjectMocks
+    private ChatServiceImpl chatServiceImpl;
 
     private User currentUser;
 
@@ -210,5 +206,18 @@ class UserServiceImplTest {
                 .avatar("avatar-" + username)
                 .roles(Set.of(Role.builder().name(ERole.USER).build()))
                 .build();
+    }
+
+    @Test
+    void getFriendUnseenMessage() {
+        Map<UUID, Boolean> friendsUnreadStatus = chatServiceImpl.getFriendsUnreadStatus(
+                UUID.fromString("631325ab-83eb-404b-93b9-fae89988ede0"),
+                List.of(
+                        UUID.fromString("5e089d24-729c-4354-8ec4-80c12233cab7"),
+                        UUID.fromString("5338e9f1-c30c-46ac-9c93-1a214edfd177")
+                )
+        );
+
+        assertThat(friendsUnreadStatus.get(UUID.fromString("631325ab-83eb-404b-93b9-fae89988ede0")).booleanValue()).isTrue();
     }
 }

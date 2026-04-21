@@ -1,10 +1,13 @@
 package com.dtrung.chatapp.service.impl;
 
 import com.dtrung.chatapp.model.*;
+import com.dtrung.chatapp.repository.FriendShipRepository;
 import com.dtrung.chatapp.repository.MessageRepository;
 import com.dtrung.chatapp.repository.UserRepository;
+import com.dtrung.chatapp.response.MyFriendResponse;
 import com.dtrung.chatapp.service.ChatService;
 import com.dtrung.chatapp.service.OnlineOfflineService;
+import com.dtrung.chatapp.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
@@ -26,6 +29,7 @@ public class OnlineOfflineServiceImpl implements OnlineOfflineService {
     private final UserRepository userRepository;
     private final SimpMessageSendingOperations messagingTemplate;
     private final MessageRepository messageRepository;
+    private final FriendShipRepository friendShipRepository;
 
 
     @Override
@@ -33,7 +37,6 @@ public class OnlineOfflineServiceImpl implements OnlineOfflineService {
         if(user == null) { return; }
         UsernamePasswordAuthenticationToken authentication = (UsernamePasswordAuthenticationToken) user;
         User onlineUser = (User) authentication.getPrincipal();
-        log.info("{} is online", onlineUser.getUsername());
         for(UUID id : onlineUsers) {
             messagingTemplate.convertAndSend(
                     "/topic/" + id,
@@ -79,19 +82,37 @@ public class OnlineOfflineServiceImpl implements OnlineOfflineService {
     @Override
     public void addUserSubscribed(Principal user, String subscribedChannel) {
         User user1 = userRepository.findByUsername(user.getName());
-        log.info("{} subscribed to {}", user1.getUsername(), subscribedChannel);
         Set<String> subscriptions = userSubscribed.getOrDefault(user1.getId(), new HashSet<>());
         subscriptions.add(subscribedChannel);
         userSubscribed.put(user1.getId(), subscriptions);
-        log.info(userSubscribed.toString());
+        String userTopic = subscribedChannel.split("/")[2];
+        if (userTopic.equals(user1.getId().toString())) {
+            List<UUID> myFriendResponses = friendShipRepository.findAllByUserId(user1.getId())
+                    .stream()
+                    .map(friendShip -> {
+                        User friend = friendShip.getSender().getId().equals(user1.getId())
+                                ? friendShip.getReceiver()
+                                : friendShip.getSender();
+                        return friend.getId();
+                    })
+                    .toList();
+            List<UUID> unreadFriends = messageRepository.findFriendsWithUnreadMessages(
+                    user1.getId(),
+                    myFriendResponses
+            );
+            messagingTemplate.convertAndSend(
+                    "/topic/" + user1.getId().toString(),
+                    NotificationToUser.builder()
+                            .unreadFriends(unreadFriends)
+                            .build()
+            );
+        }
     }
 
     @Override
     public void removeUserSubscribed(Principal user, String subscribedChannel) {
         User user1 = userRepository.findByUsername(user.getName());
-        Set<String> subscribed = userSubscribed.get(user1.getId());
         Set<String> subscriptions = userSubscribed.getOrDefault(user1.getId(), new HashSet<>());
-        log.info("unsubscription! {} unsubscribed {}", user1.getId().toString(), subscribedChannel);
         subscriptions.remove(subscribedChannel);
         userSubscribed.put(user1.getId(), subscriptions);
     }

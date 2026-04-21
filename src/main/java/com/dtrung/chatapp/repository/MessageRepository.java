@@ -1,6 +1,7 @@
 package com.dtrung.chatapp.repository;
 
 import com.dtrung.chatapp.model.Message;
+import com.dtrung.chatapp.model.MessageDeliveryStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,5 +30,17 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     List<Message> findBySenderIdAndConversationId(
             @Param("conversationId") String conversationId,
             @Param("fromUser") UUID fromUser
+    );
+
+    @Query("""
+        SELECT DISTINCT m.fromUser
+        FROM Message m
+        WHERE m.toUser = :currentUserId
+          AND m.fromUser IN :friends
+          AND ( m.deliveryStatus = "DELIVERED" or m.deliveryStatus = "NOT_DELIVERED")
+    """)
+    List<UUID> findFriendsWithUnreadMessages(
+            @Param("currentUserId") UUID currentUserId,
+            @Param("friends") List<UUID> friends
     );
 }

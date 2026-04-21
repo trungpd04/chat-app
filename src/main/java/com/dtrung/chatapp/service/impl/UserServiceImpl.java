@@ -201,9 +201,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<FriendShip> getFriends(UUID userId) {
-//        List<User> availableUsers =
-//                friendShipRepository.findAllByUserId(userId)
-//                        .stream().map()
         return friendShipRepository.findAllByUserId(userId);
     }
 

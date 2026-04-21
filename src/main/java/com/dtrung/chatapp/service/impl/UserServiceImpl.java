@@ -109,28 +109,28 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public FriendShip sendAddFriendRequest(UUID friendId) throws BusinessException {
         User currentLoggedInUser = securityUtils.getCurrentUser();
-        Optional<User> user = userRepository.findById(friendId);
-        if(user.isPresent()) {
-            FriendShip friendship = FriendShip.builder()
-                    .senderId(currentLoggedInUser.getId())
-                    .receiverId(user.get().getId())
-                    .createdAt(LocalDateTime.now())
-                    .status(FriendshipStatus.PENDING)
-                    .build();
-            if(!friendShipRepository
-                    .existsBySenderIdAndReceiverId(currentLoggedInUser.getId(), user.get().getId())) {
-                return friendShipRepository.save(friendship);
-            }else{
-                throw new BusinessException("Add friend request has already sent");
-            }
-        }else{
-            throw new BusinessException("User not found");
+
+        User sendToUser = userRepository.findById(friendId)
+                .orElseThrow(() -> new BusinessException("User not found"));
+
+        FriendShip friendship = FriendShip.builder()
+                .sender(currentLoggedInUser)
+                .receiver(sendToUser)
+                .createdAt(LocalDateTime.now())
+                .status(FriendshipStatus.PENDING)
+                .build();
+        if (friendShipRepository.existsBySenderAndReceiver(currentLoggedInUser, sendToUser)
+            || friendShipRepository.existsBySenderAndReceiver(sendToUser, currentLoggedInUser)
+        ) {
+            throw new BusinessException("Request has already been sent or received");
+        } else {
+            return friendShipRepository.save(friendship);
         }
     }
 
     @Override
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public List<User> getAllUsers(String search) {
+        return userRepository.findAllByUsernameLike(search);
     }
 
     @Override
@@ -147,7 +147,10 @@ public class UserServiceImpl implements UserService {
                     friendship.setStatus(FriendshipStatus.ACCEPTED);
                     Conversation conversation =
                             Conversation.builder()
-                                    .convId(uuidUtils.getConversationId(friendship.getSenderId(), friendship.getReceiverId()))
+                                    .convId(
+                                            uuidUtils.getConversationId(
+                                                    friendship.getSender().getId(),
+                                                    friendship.getReceiver().getId()))
                                     .build();
                     conversationRepository.save(conversation);
                 }
@@ -172,8 +175,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<FriendShip> getFriends(UUID userId) {
-
-        return friendShipRepository.findByUserId(userId);
+//        List<User> availableUsers =
+//                friendShipRepository.findAllByUserId(userId)
+//                        .stream().map()
+        return friendShipRepository.findAllByUserId(userId);
     }
 
     @Override
@@ -181,7 +186,7 @@ public class UserServiceImpl implements UserService {
         User currentLoggedInUser = securityUtils.getCurrentUser();
         return friendShipRepository.findPendingRequestsByReceiverId(currentLoggedInUser.getId())
                 .stream()
-                .map(friendShip -> userRepository.findById(friendShip.getSenderId())
+                .map(friendShip -> userRepository.findById(friendShip.getSender().getId())
                         .map(sender -> FriendRequestResponse.builder()
                                 .id(friendShip.getId())
                                 .senderId(sender.getId())

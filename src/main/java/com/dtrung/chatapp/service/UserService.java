@@ -17,7 +17,7 @@ public interface UserService {
     LoginResponse login(LoginRequest loginRequest);
     User register(SignUpRequest signUpRequest) throws BusinessException;
     FriendShip sendAddFriendRequest(UUID friendId) throws BusinessException;
-    List<User> getAllUsers();
+    List<User> getAllUsers(String search);
     FriendShip acceptOrDeclineAddFriendRequest(
             UUID id,
             FriendshipStatus status)

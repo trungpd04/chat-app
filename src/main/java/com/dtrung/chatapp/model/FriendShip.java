@@ -29,10 +29,12 @@ public class FriendShip {
     private UUID id;
 
     @JoinColumn(name = "senderId", nullable = false)
-    private UUID senderId;
+    @ManyToOne
+    private User sender;
 
     @JoinColumn(name = "receiverId", nullable = false)
-    private UUID receiverId;
+    @ManyToOne
+    private User receiver;
 
     @Enumerated(EnumType.STRING)
     private FriendshipStatus status;

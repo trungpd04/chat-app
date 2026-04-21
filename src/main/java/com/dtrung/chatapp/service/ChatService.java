@@ -18,4 +18,5 @@ public interface ChatService {
             NotificationToUser notificationToUser,
             SimpMessageHeaderAccessor headerAccessor
     );
+    void sendMessageSeenStatusToSenderUser(String senderUserId, String conversationId);
 }

@@ -12,6 +12,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -32,25 +33,19 @@ public class ChatController {
     ) {
         return ResponseEntity.ok(chatService.sendMessage(convId, message, headerAccessor));
     }
-    @MessageMapping("/chat/notification/{convId}")
-    public ResponseEntity<NotificationToUser> sendNotification(
-            @Payload NotificationToUser notification,
-            @DestinationVariable String convId,
-            SimpMessageHeaderAccessor headerAccessor
-    ) {
-        return ResponseEntity.ok(
-                chatService.sendNotificationToUser(
-                        notification.getFriendId().toString(),
-                        convId,
-                        notification,
-                        headerAccessor
-                ));
-    }
 
     @GetMapping("")
     public ResponseEntity<List<Message>> getAllMessages(
             @RequestParam(name = "convId") String conversationId
     ) {
         return ResponseEntity.ok(chatService.getMessages(conversationId));
+    }
+
+    @PutMapping("/notification")
+    public ResponseEntity<?> sendNotificationToUser(
+            @RequestParam(name = "userId") String userId,
+            @RequestParam(name = "convId") String conversationId) {
+        chatService.sendMessageSeenStatusToSenderUser(userId, conversationId);
+        return ResponseEntity.ok(null);
     }
 }

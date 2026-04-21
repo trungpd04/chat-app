@@ -35,7 +35,6 @@ public class WebSocketEventListener {
     }
 
     @EventListener
-//    @SendToUser
     public void handleSubscribeEvent(SessionSubscribeEvent event) {
         String subscribedChannel =
                 (String) event.getMessage().getHeaders().get("simpDestination");
@@ -52,13 +51,14 @@ public class WebSocketEventListener {
 
     @EventListener
     public void handleUnsubscribeEvent(SessionUnsubscribeEvent event) {
-        log.info("{} Unsubscribed", Objects.requireNonNull(event.getUser()).getName());
         String simpSessionId = (String) event
                 .getMessage()
                 .getHeaders()
                 .get("simpSessionId");
         String unSubscribedChannel =
                 simpSessionIdToSubscriptionId.get(simpSessionId);
+        log.info("{} Unsubscribed", Objects.requireNonNull(event.getUser()).getName());
+        log.info("channel {}", unSubscribedChannel);
         onlineOfflineService.removeUserSubscribed(event.getUser(), unSubscribedChannel);
     }
 }

@@ -10,7 +10,6 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
 frontend:
   caller:
     host: http://localhost:3000
@@ -18,4 +17,4 @@ rsa:
   rsa-private-key: classpath:certs/private_key.pem
   rsa-public-key: classpath:certs/public_key.pem
 jwt:
-  expiration-time: 3600
+  expiration-time: 666666666666

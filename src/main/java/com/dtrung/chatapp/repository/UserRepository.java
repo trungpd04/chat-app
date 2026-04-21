@@ -16,4 +16,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmail(String email);
     boolean existsByPhoneNumber(String phone);
     boolean existsByUsername(String username);
+    @Query("""
+        SELECT u from User u where u.username like %?1%
+    """)
+    List<User> findAllByUsernameLike(String username);
 }

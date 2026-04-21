@@ -6,7 +6,9 @@ import com.dtrung.chatapp.repository.MessageRepository;
 import com.dtrung.chatapp.repository.UserRepository;
 import com.dtrung.chatapp.service.ChatService;
 import com.dtrung.chatapp.service.OnlineOfflineService;
+import com.dtrung.chatapp.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
@@ -26,6 +29,7 @@ public class ChatServiceImpl implements ChatService {
     private final MessageRepository messageRepository;
     private final ConversationRepository conversationRepository;
     private final OnlineOfflineService onlineOfflineService;
+    private final SecurityUtils securityUtils;
     @Override
     public Message sendMessage(
             String conversationId,
@@ -48,12 +52,15 @@ public class ChatServiceImpl implements ChatService {
         if (!isUserOnline) {
             // Người nhận không online
             message.setDeliveryStatus(MessageDeliveryStatus.NOT_DELIVERED);
+            log.info("user {} not online", receiverId);
         } else if (!isUserSubscribed) {
             // Người nhận online nhưng không subscribe vào kênh chat
             message.setDeliveryStatus(MessageDeliveryStatus.DELIVERED);
+            log.info("user {} not subscribed", receiverId);
         } else {
             // Người nhận online và đang subscribe vào kênh chat
             message.setDeliveryStatus(MessageDeliveryStatus.SEEN);
+            log.info("user {} online and subscribed", receiverId);
         }
 
         // Lưu tin nhắn vào database
@@ -71,6 +78,29 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public List<Message> getMessages(String conversationId) {
         return messageRepository.findByConversationId(conversationId);
+    }
+
+    public void sendMessageSeenStatusToSenderUser(String senderUserId, String conversationId) {
+
+        List<Message> messages = messageRepository.findBySenderIdAndConversationId(
+                conversationId, UUID.fromString(senderUserId)
+        );
+        if (!messages.isEmpty()) {
+            for(Message message : messages) {
+                message.setDeliveryStatus(MessageDeliveryStatus.SEEN);
+            }
+
+            messageRepository.saveAll(messages);
+            User loggedInUser = securityUtils.getCurrentUser();
+            NotificationToUser notificationToUser =
+                    NotificationToUser.builder()
+                            .friendId(UUID.fromString(loggedInUser.getId().toString()))
+                            .friendUsername(loggedInUser.getUsername())
+                            .friendStatus(FriendStatus.ONLINE)
+                            .deliveryStatus(MessageDeliveryStatus.SEEN)
+                            .build();
+            messagingTemplate.convertAndSend("/topic/" + conversationId, notificationToUser);
+        }
     }
 
     @Override
@@ -92,7 +122,7 @@ public class ChatServiceImpl implements ChatService {
                 message.setDeliveryStatus(notificationToUser.getDeliveryStatus());
             }
             messageRepository.saveAll(messages);
-            messagingTemplate.convertAndSend("/topic/notification/" + subscription, notificationToUser);
+            messagingTemplate.convertAndSend("/topic/" + subscription, notificationToUser);
         }
         return notificationToUser;
     }

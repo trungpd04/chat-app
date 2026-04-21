@@ -69,8 +69,10 @@ public class UserController {
 
     @GetMapping("")
     @PreAuthorize("hasAuthority('ROLE_USER')")
-    public ResponseEntity<List<User>> getUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+    public ResponseEntity<List<User>> getUsers(
+            @RequestParam(value = "search", required = false) String search
+    ) {
+        return ResponseEntity.ok(userService.getAllUsers(search));
     }
 
     @GetMapping("/friends")

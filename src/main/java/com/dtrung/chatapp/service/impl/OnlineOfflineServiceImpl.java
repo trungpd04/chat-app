@@ -3,6 +3,7 @@ package com.dtrung.chatapp.service.impl;
 import com.dtrung.chatapp.model.*;
 import com.dtrung.chatapp.repository.MessageRepository;
 import com.dtrung.chatapp.repository.UserRepository;
+import com.dtrung.chatapp.service.ChatService;
 import com.dtrung.chatapp.service.OnlineOfflineService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -82,17 +83,16 @@ public class OnlineOfflineServiceImpl implements OnlineOfflineService {
         Set<String> subscriptions = userSubscribed.getOrDefault(user1.getId(), new HashSet<>());
         subscriptions.add(subscribedChannel);
         userSubscribed.put(user1.getId(), subscriptions);
+        log.info(userSubscribed.toString());
     }
 
     @Override
     public void removeUserSubscribed(Principal user, String subscribedChannel) {
         User user1 = userRepository.findByUsername(user.getName());
         Set<String> subscribed = userSubscribed.get(user1.getId());
-        log.info("after remove channel: {} \n user: {} \n present user subscribed {}", subscribedChannel, user1.getUsername(), subscribed.toString());
         Set<String> subscriptions = userSubscribed.getOrDefault(user1.getId(), new HashSet<>());
-        log.info("unsubscription! {} unsubscribed {}", user1.getUsername(), subscribedChannel);
+        log.info("unsubscription! {} unsubscribed {}", user1.getId().toString(), subscribedChannel);
         subscriptions.remove(subscribedChannel);
-
         userSubscribed.put(user1.getId(), subscriptions);
     }
 
